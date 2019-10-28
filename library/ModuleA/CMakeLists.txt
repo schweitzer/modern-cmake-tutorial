@@ -9,7 +9,7 @@ target_include_directories(
     A
     PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:headers>
 )
 
 # Linking A with Thread::Thread library. Will populate the INTERFACE_LINK_LIBRARIES
