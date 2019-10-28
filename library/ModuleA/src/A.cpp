@@ -17,7 +17,7 @@ A::~A()
 
 void A::foo()
 {
-    std::cout<<"Lanch process..."<<std::endl;
+    std::cout<<"[ModernCMake::A]: Lanch process..."<<std::endl;
     m_thread = std::thread(&A::bar, this);
 
     m_thread.join();

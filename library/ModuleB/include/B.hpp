@@ -1,6 +1,6 @@
 #pragma once
 
-#include <A.hpp>
+#include "A.hpp"
 #include <memory>
 
 namespace ModernCMake

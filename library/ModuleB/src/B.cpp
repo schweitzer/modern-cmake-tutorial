@@ -1,5 +1,7 @@
 #include "B.hpp"
 
+#include <iostream>
+
 namespace ModernCMake
 {
 
@@ -15,7 +17,7 @@ B::~B()
 
 void B::CallFoo()
 {
-
+    std::cout<<"[ModernCMake::B]: Call ModernCMake::A"<<std::endl;
     m_aPtr->foo();
 }
 

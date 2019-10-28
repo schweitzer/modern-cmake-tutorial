@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 # Project Name Version & main Languages
 project(ModernCMake VERSION 1.0.0 LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Create an imported target Threads::Threads
 find_package(Threads QUIET REQUIRED)
 
