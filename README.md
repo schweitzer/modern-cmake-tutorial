@@ -1,6 +1,7 @@
 # modern_cmake
 
 Tutorial/Example to deal with modern cmake.
+This tutorial assume that you already know how to write a CMakeLists.txt
 
 ## Introduction
 
@@ -65,9 +66,9 @@ include_directories(${INCLUDE_DIRS})
 link_libraries(${LIBRARIES})
 ```
 
->Don’t. Just don’t. This is wrong in so many dimensions. You are just blindly >throwing stuff into a pot of include directories and compiler flags. There is >no structure. There is no transparency. Not to mention that functions like >include_directories work at the directory level and apply to all entities >defined in scope.
+>Don’t. Just don’t. This is wrong in so many dimensions. You are just blindly throwing stuff into a pot of include directories and compiler flags. There is no structure. There is no transparency. Not to mention that functions like include_directories work at the directory level and apply to all entities defined in scope.
 
->And this isn’t even the real problem, what do you do with transitive >dependencies? What about the order of linking? Yes, you need to take care about >that yourself. The moment you need to deal with the dependencies of your >dependencies is the moment your life needs to be reevaluated.
+>And this isn’t even the real problem, what do you do with transitive dependencies? What about the order of linking? Yes, you need to take care about that yourself. The moment you need to deal with the dependencies of your dependencies is the moment your life needs to be reevaluated.
 
 I try here to explain a few basic concepts that you should keep in mind when creating a library with CMake using the ModernCMake library as an example.
 
@@ -199,18 +200,89 @@ install(
     DESTINATION "${MC_CONFIG_INSTALL_DIR}")
 ```
 
-While the two first blocks are only setting some fileName or Path, the interesting part is the end. CMake provide a function to generate a basic configVersion file.
+While the two first blocks are only setting some filenames or paths, the interesting part is the end. CMake provide a function to generate [a basic configVersion file](https://cmake.org/cmake/help/v3.16/module/CMakePackageConfigHelpers.html#command:write_basic_package_version_file). 
 
 
 
-The interesting part are the generated cmake files. When the library is installed you will see some additionnal files installed by CMAKE in `your/install/dir/lib/cmake/ModernCMake`
+The interesting part are the generated cmake files. When the library is installed you will see some additionnal files installed by CMAKE in `your/install/dir/lib/cmake/ModernCMake`.
 
-* ModernCmakeConfig.cmake
-* ModernCMakeConfigVersion.cmake
-* ModernCMakeTargets.cmake
-* ModernCMakeTargets-_[release/debug]_.cmake
+This files are realy the basis of doing cmake right, while when writting `find_package(myPackage)`CMake will first looking for `myPackageConfig.cmake` ! So you don't have any excuses to not provide Config Files.
 
-## SampleExec
+Let's take a look in the install folder of ModernCMake, you can see that config files are installed in `path/to/the/install/dir/lib/cmake/ModernCMake/` , you will see 4 files:
+
+* `ModernCMakeConfig.cmake`: the basic config file (here provided by us)
+* `ModernCMakeConfigVersion.cmake`: the generated config file by cmake, it contains some code to check if version are compatible (required version vs provided version).
+* `ModernCMakeTargets.cmake`: our exported targets see below.
+* `ModernCMakeTargets-_[release/debug]_.cmake`: additionnal informations of our targets for specific build (debug, release, ...).
+
+The most important part are in the `ModernCMakeTargets.cmake`
+
+```cmake
+# Create imported target ModernCMake::A
+add_library(ModernCMake::A SHARED IMPORTED)
+
+set_target_properties(ModernCMake::A PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/headers"
+  INTERFACE_LINK_LIBRARIES "Threads::Threads"
+)
+
+# Create imported target ModernCMake::B
+add_library(ModernCMake::B SHARED IMPORTED)
+
+set_target_properties(ModernCMake::B PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/headers"
+  INTERFACE_LINK_LIBRARIES "ModernCMake::A"
+)
+```
+
+You can see that each of our targets exports their own includes dirs and link libraries. As a result if you write an application or a library that use for example `ModernCMake::B`, it will automaticaly forward the link to `ModernCMake::A` and therefore the link to `Threads::Threads` !
+
+Let's verify this.
+
+## A sample to rules them all
+
+Let's build an application that uses ModernCMake library.
+
+the executable folder contain a CMakeLists.txt and a main.cpp
+
+To build it launch (from a build directory):
+
+`$ cmake ../../../src/modern_cmake/executable -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/Path/to/a/install/directory/`
+
+CMake will ask you to set the `ModernCMake_DIR`. You will need to set it to the `install/dir/of/ModernCMake/lib/cmake/ModernCMake`, so that cmake find the config files, remember ?
+
+after that run `ninja`, and magic of cmake should happend.
+
+A quick look to the `./sampleExec` shared libraries (ldd or otools), and you will see that both ModernCMake::A & B are linked. 
+
+Yeah no suprise, but if we look at the CMakeLists.txt of sampleExec you will that
+
+```cmake
+# Project Name Version & main Languages.
+project(sampleExec VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find the B Component of ModernCMake.
+find_package(ModernCMake QUIET COMPONENTS ModernCMake::B)
+
+add_executable(${PROJECT_NAME} src/main.cpp)
+
+target_link_libraries(${PROJECT_NAME} PUBLIC ModernCMake::B)
+```
+
+We only ask cmake to find `ModernCMake::B` and to link `ModernCMake::B` to `sampleExec`. But since B needs A and thanks to our nice exported targets cmake find everyting, that's **transitivity baby** !
+
+You can also launch `sampleExec` to see that we use both libraries:
+
+```shell
+$ ./sampleExec 
+[sampleExec]: Hello world !
+[ModernCMake::B]: Call ModernCMake::A
+[ModernCMake::A]: Lanch process...
+Value: 10
+```
 
 ## More Ressources
 
